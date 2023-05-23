@@ -1,0 +1,5 @@
+version = "0.1.0"
+author = "beerpsi"
+description = "Nim bindings for Aidoku"
+license = "0BSD"
+srcDir = "src"
