@@ -10,7 +10,6 @@ type
 proc copy(rid: Rid): Rid {.importwasm: "std".}
 proc destroy(rid: Rid): void {.importwasm: "std".}
 proc value_kind(rid: Rid): Kind {.importwasm: "std.typeof".}
-proc print_internal(s: cstring, sz: csize_t): void {.importwasm: "env.print".}
 
 proc create_null(): Rid {.importwasm: "std".}
 proc create_array(): Rid {.importwasm: "std".}
@@ -36,7 +35,6 @@ proc kind(v: ValueRef): Kind =
     result = value_kind(v.id)
 proc isNil(v: ValueRef): bool = 
     result = v.kind == Kind.Null
-proc print(s: string) = print_internal(s, csize_t(s.len))
 
 proc readInt(v: ValueRef): int32 = 
     let valueKind = v.kind
@@ -60,5 +58,5 @@ proc readBool(v: ValueRef): bool =
         raise newException(ValueError, "Value is not a bool, or cannot be converted to one")
 
 
-export Rid, newValueRef, kind, isNil, readInt, readFloat, readBool, print
+export Rid, newValueRef, kind, isNil, readInt, readFloat, readBool
 

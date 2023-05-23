@@ -1,14 +1,11 @@
-{.compile: "walloc.c".}
 import macros, strutils
+include walloc
 
 macro exportwasm*(p: untyped): untyped =
     expectKind p, nnkProcDef
     result = p
     result.addPragma(ident"exportc")
-    let cgenDecl = when defined(cpp):
-                   "extern \"C\" __attribute__ ((visibility (\"default\"))) $# $#$#"
-                 else:
-                   "__attribute__ ((visibility (\"default\"))) $# $#$#"
+    let cgenDecl = "NIM_EXTERNC __attribute__ ((visibility (\"default\"))) $# $#$#"
 
     result.addPragma(newColonExpr(ident"codegenDecl", newLit(cgenDecl)))
 
@@ -22,30 +19,17 @@ macro importwasm*(qualifier: string, p: untyped): untyped =
     result = p
     result.addPragma(ident"importc")
 
-    let cgenDecl = when defined(cpp):
-                   "extern \"C\" __attribute__((import_module(x))) __attribute__((import_name(y))) $# $#$#"
-                 else:
-                   "__attribute__((import_module(\"" & module &
-                           "\"))) __attribute__((import_name(\"" & name & "\"))) $# $#$#"
+    let cgenDecl = "NIM_EXTERNC __attribute__((import_module(\"" & module &
+            "\"))) __attribute__((import_name(\"" & name & "\"))) $# $#$#"
 
     result.addPragma(newColonExpr(ident"codegenDecl", newLit(cgenDecl)))
 
-proc malloc(size: csize_t): pointer {.importc: "malloc".}
-proc free(p: pointer): void {.importc: "free".}
-    
-proc calloc(nmemb, size: csize_t): pointer {.exportc.} =
-  let p = malloc(nmemb * size)
-  zeroMem(p, nmemb * size)
-  return p
-
-# proc mmap(a: pointer, len: csize_t, prot, flags, fildes: cint, off: int): pointer {.exportc.} =
-#   malloc(len)
-
-# proc munmap(a: pointer, len: csize_t): cint {.exportc.} =
-#   free(a)
-
+# ------------------------------------
+# Shit we probably don't need for now
+# ------------------------------------
 proc exit(code: cint) {.exportc.} = discard
-proc fwrite(p: pointer, size, nmemb: csize_t, stream: pointer): csize_t {.exportc.} = discard
+proc fwrite(p: pointer, size, nmemb: csize_t,
+        stream: pointer): csize_t {.exportc.} = discard
 proc fflush(stream: pointer): cint {.exportc.} = discard
 proc fputc(c: cint, stream: pointer): cint {.exportc.} = discard
 proc flockfile(f: pointer) {.exportc.} = discard
@@ -166,21 +150,25 @@ N_LIB_PRIVATE float fmodf(float x, float y) {
 }
 
 """.}
-  
+
 import std/compilesettings
 static:
-  # Nim will pass -lm and -lrt to linker, so we provide stubs, by compiling empty c file into nimcache/lib*.a, and pointing
-  # the linker to nimcache
-  const nimcache = querySetting(nimcacheDir)
-  {.passL: "-L" & nimcache.}
-  var compilerPath = querySetting(ccompilerPath)
-  if compilerPath == "":
-    compilerPath = "clang"
-  when defined(windows):
-    discard staticExec("mkdir " & nimcache)
-  else:
-    discard staticExec("mkdir -p " & nimcache)
-  discard staticExec(compilerPath & " -c --target=wasm32-unknown-unknown-wasm -o " & nimcache & "/libm.a -x c -", input = "\n")
-  discard staticExec(compilerPath & " -c --target=wasm32-unknown-unknown-wasm -o " & nimcache & "/librt.a -x c -", input = "\n")
+    # Nim will pass -lm and -lrt to linker, so we provide stubs, by compiling empty c file into nimcache/lib*.a, and pointing
+    # the linker to nimcache
+    const nimcache = querySetting(nimcacheDir)
+    {.passL: "-L" & nimcache.}
+
+    var compilerPath = querySetting(ccompilerPath)
+
+    if compilerPath == "":
+        compilerPath = "clang"
+    when defined(windows):
+        discard staticExec("mkdir " & nimcache)
+    else:
+        discard staticExec("mkdir -p " & nimcache)
+    discard staticExec(compilerPath & " -c --target=wasm32-unknown-unknown-wasm -o " &
+            nimcache & "/libm.a -x c -", input = "\n")
+    discard staticExec(compilerPath & " -c --target=wasm32-unknown-unknown-wasm -o " &
+            nimcache & "/librt.a -x c -", input = "\n")
 
 export importwasm, exportwasm

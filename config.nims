@@ -5,7 +5,7 @@
 --d:noSignalHandler
 --d:nimPreviewFloatRoundtrip # Avoid using sprintf as it's not available in wasm
 
---os:linux
+--os:standalone
 --cpu:i386
 # --gc:orc
 --mm:orc
